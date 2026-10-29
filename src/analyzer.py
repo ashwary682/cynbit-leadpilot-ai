@@ -174,10 +174,18 @@ def rule_based_extract(text: str) -> LeadAnalysis:
 # --------------------------------------------------------------------------
 def _get_client():
     key = os.getenv("GROQ_API_KEY")
+
+    if not key:
+        try:
+            import streamlit as st
+            key = st.secrets.get("GROQ_API_KEY")
+        except Exception:
+            key = None
+
     if not key:
         return None
-    from groq import Groq
 
+    from groq import Groq
     return Groq(api_key=key)
 
 
