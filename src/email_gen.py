@@ -4,7 +4,7 @@ Drafts are for HUMAN REVIEW. The app never sends email automatically.
 """
 import os
 
-from .analyzer import _get_client
+from .analyzer import _get_client, get_groq_model
 from .models import LeadAnalysis
 from .scoring import LeadScore
 
@@ -38,7 +38,7 @@ def generate_followup(a: LeadAnalysis, score: LeadScore, use_llm: bool = True) -
                    f"Summary: {a.project_summary}\nLead tier: {score.tier}\n"
                    f"Missing information: {a.missing_info}")
         resp = client.chat.completions.create(
-            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
+            model=get_groq_model(),
             messages=[{"role": "system", "content": EMAIL_SYSTEM_PROMPT},
                       {"role": "user", "content": f"<lead>\n{payload}\n</lead>"}],
             temperature=0.4,

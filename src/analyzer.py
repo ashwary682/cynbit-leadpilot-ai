@@ -172,16 +172,60 @@ def rule_based_extract(text: str) -> LeadAnalysis:
 # --------------------------------------------------------------------------
 # LLM extraction
 # --------------------------------------------------------------------------
-def _get_client():
+def get_groq_api_key() -> Optional[str]:
     key = os.getenv("GROQ_API_KEY")
+    if key and key.strip():
+        return key.strip().strip('"\'')
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets"):
+            if "GROQ_API_KEY" in st.secrets and str(st.secrets["GROQ_API_KEY"]).strip():
+                val = str(st.secrets["GROQ_API_KEY"]).strip().strip('"\'')
+                os.environ["GROQ_API_KEY"] = val
+                return val
+            for sec_name in st.secrets:
+                try:
+                    sec = st.secrets[sec_name]
+                    if hasattr(sec, "get") and "GROQ_API_KEY" in sec:
+                        val = str(sec["GROQ_API_KEY"]).strip().strip('"\'')
+                        if val:
+                            os.environ["GROQ_API_KEY"] = val
+                            return val
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return None
 
-    if not key:
-        try:
-            import streamlit as st
-            key = st.secrets.get("GROQ_API_KEY")
-        except Exception:
-            key = None
 
+def get_groq_model() -> str:
+    m = os.getenv("GROQ_MODEL")
+    if m and m.strip():
+        return m.strip().strip('"\'')
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets"):
+            if "GROQ_MODEL" in st.secrets and str(st.secrets["GROQ_MODEL"]).strip():
+                val = str(st.secrets["GROQ_MODEL"]).strip().strip('"\'')
+                os.environ["GROQ_MODEL"] = val
+                return val
+            for sec_name in st.secrets:
+                try:
+                    sec = st.secrets[sec_name]
+                    if hasattr(sec, "get") and "GROQ_MODEL" in sec:
+                        val = str(sec["GROQ_MODEL"]).strip().strip('"\'')
+                        if val:
+                            os.environ["GROQ_MODEL"] = val
+                            return val
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return "openai/gpt-oss-120b"
+
+
+def _get_client():
+    key = get_groq_api_key()
     if not key:
         return None
 
@@ -190,7 +234,7 @@ def _get_client():
 
 
 def _llm_extract(client, text: str) -> LeadAnalysis:
-    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+    model = get_groq_model()
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"<inquiry>\n{text}\n</inquiry>"},

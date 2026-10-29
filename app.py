@@ -7,7 +7,7 @@ import os
 import pandas as pd
 import streamlit as st
 
-from src.analyzer import analyze_inquiry
+from src.analyzer import analyze_inquiry, get_groq_api_key
 from src.email_gen import generate_followup
 from src.samples import SAMPLES
 from src.scoring import score_lead
@@ -15,13 +15,15 @@ from src.storage import list_leads, save_lead
 
 st.set_page_config(page_title="Cynbit LeadPilot AI", page_icon="🧭", layout="wide")
 
-# Streamlit Cloud: copy secrets into env so the same code works locally and deployed.
+# Streamlit Cloud: sync secrets to env so both local and cloud work identically
+secrets_error = None
 try:
-    for k in ("GROQ_API_KEY", "GROQ_MODEL"):
-        if k in st.secrets:
-            os.environ[k] = st.secrets[k]
-except Exception:
-    pass
+    if hasattr(st, "secrets"):
+        for k in ("GROQ_API_KEY", "GROQ_MODEL"):
+            if k in st.secrets and str(st.secrets[k]).strip():
+                os.environ[k] = str(st.secrets[k]).strip().strip('"\'')
+except Exception as e:
+    secrets_error = str(e)
 
 TIER_ICON = {"Hot": "🔥", "Warm": "🌤️", "Cold": "❄️"}
 
@@ -37,7 +39,16 @@ st.caption("AI-assisted lead qualification and follow-up drafting. Demo uses syn
 
 with st.sidebar:
     st.header("Settings")
-    has_key = bool(os.getenv("GROQ_API_KEY"))
+    if secrets_error:
+        st.error(
+            f"⚠️ Streamlit Secrets error: {secrets_error}\n\n"
+            "Secrets in Streamlit Cloud must use TOML format with quotes:\n"
+            "```toml\n"
+            'GROQ_API_KEY = "gsk_..."\n'
+            'GROQ_MODEL = "openai/gpt-oss-120b"\n'
+            "```"
+        )
+    has_key = bool(get_groq_api_key())
     use_llm = st.toggle("Use LLM (Groq)", value=has_key, disabled=not has_key)
     st.write("Mode: **LLM extraction**" if use_llm else "Mode: **rule-based fallback**")
     if not has_key:
